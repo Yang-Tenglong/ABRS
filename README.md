@@ -1,38 +1,48 @@
-# Asymmetric Beta-Posterior Reward Shaping (ABRS)
+# ABRS: Asymmetric Beta-Posterior Reward Shaping
 
-The code for the proposed Asymmetric Beta-Posterior Reward Shaping (ABRS)
-algorithm.
+Asymmetric Beta-Posterior Reward Shaping (ABRS) is a reward-shaping method for
+sparse-reward reinforcement learning. It groups continuous states with SimHash,
+updates asymmetric Beta posteriors from online trajectory quality labels, and
+uses posterior statistics to provide dense guidance during policy learning.
 
 [Paper Link to be updated]
 
-An overview of the ABRS framework to shape rewards:
+An overview of the ABRS framework:
 
 ![](./ABRS.png)
 
-This implementation uses SAC with two ABRS reward-shaping signals:
-- Success reward from the mean of a state-level Beta posterior.
-- Uncertainty reward from the variance of the same Beta posterior.
+In this implementation, ABRS is integrated into SAC. The replay buffer stores
+the original environment reward, while ABRS computes an auxiliary reward when
+critic targets are built:
 
-Both signals are computed from SimHash state aggregation and online trajectory
-ranking. ABRS can be disabled for a SAC-style ablation, and the uncertainty term
-can be disabled independently.
+```text
+r_hat = r_e + abrs_lambda * (r_suc + abrs_eta * r_unc)
+```
+
+The auxiliary reward contains:
+- Success reward estimated by the mean of the Beta posterior.
+- Uncertainty reward estimated from the posterior variance.
+
+Trajectory returns are ranked online. States visited by high-quality
+trajectories increase positive posterior evidence with backward credit, while
+states from low-quality trajectories increase negative posterior evidence.
 
 ## Requirements
 
 - Python 3.10+
-- The parent RLBase project, since `SAC_ABRS.py` imports
-  `utils.buffers.ReplayBuffer`.
-- Main packages: `gymnasium`, `shimmy[dm-control]`, `numpy`, `torch`,
-  `tensorboard`, `tyro`, and `matplotlib`.
+- `gymnasium`
+- `shimmy[dm-control]`
+- `numpy`
+- `torch`
+- `tensorboard`
+- `tyro`
+- `matplotlib`
 
-All required packages can be installed from the project-level `pyproject.toml`:
+Install dependencies with:
 
 ```bash
 uv sync
 ```
-
-Run the commands below from the RLBase project root, with this folder named
-`ABRSCode`.
 
 ## Run ABRS Algorithm
 

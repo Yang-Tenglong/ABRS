@@ -11,21 +11,8 @@ An overview of the ABRS framework:
 
 ![](./ABRS.png)
 
-In this implementation, ABRS is integrated into SAC. The replay buffer stores
-the original environment reward, while ABRS computes an auxiliary reward when
-critic targets are built:
-
-```text
-r_hat = r_e + abrs_lambda * (r_suc + abrs_eta * r_unc)
-```
-
-The auxiliary reward contains:
-- Success reward estimated by the mean of the Beta posterior.
-- Uncertainty reward estimated from the posterior variance.
-
-Trajectory returns are ranked online. States visited by high-quality
-trajectories increase positive posterior evidence with backward credit, while
-states from low-quality trajectories increase negative posterior evidence.
+This implementation integrates ABRS with SAC for sparse-reward continuous
+control tasks.
 
 ## Requirements
 

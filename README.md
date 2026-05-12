@@ -86,6 +86,5 @@ tensorboard --logdir runs
 - `SAC_ABRS.py`: training entry (SAC + ABRS).
 - `abrs.py`: ABRS reward module with SimHash aggregation, online trajectory
   ranking, and Beta-posterior reward computation.
-- `plot_beta_snapshots.py`: utility for plotting Beta-posterior changes.
 - `ABRS.png`: overview figure for the ABRS framework.
 - `__init__.py`: package marker for `ABRSCode`.

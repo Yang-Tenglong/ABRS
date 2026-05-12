@@ -1,53 +1,62 @@
-# Adaptive Beta Reward Shaping (ABRS)
+# Asymmetric Beta-Posterior Reward Shaping (ABRS)
 
-This folder contains the implementation of Adaptive Beta Reward Shaping (ABRS)
-with a Soft Actor-Critic (SAC) training backbone. The current runnable example
-targets the DeepMind Control Suite `cartpole-swingup_sparse` task through
-Gymnasium and Shimmy.
+The code for the proposed Asymmetric Beta-Posterior Reward Shaping (ABRS)
+algorithm.
 
-An overview of the ABRS reward-shaping framework:
+[Paper Link to be updated]
+
+An overview of the ABRS framework to shape rewards:
 
 ![](./ABRS.png)
 
-ABRS maintains a state-level Beta posterior over high-quality and low-quality
-trajectory evidence. During SAC critic-target construction, the replay buffer
-keeps the raw environment reward, and ABRS recomputes auxiliary rewards online
-from the current posterior:
+This implementation uses SAC with two ABRS reward-shaping signals:
+- Success reward from the mean of a state-level Beta posterior.
+- Uncertainty reward from the variance of the same Beta posterior.
 
-```text
-r_hat = r_e + abrs_lambda * (r_suc + abrs_eta * r_unc)
-```
-
-By default, the posterior is queried on `s_{t+1}`, so the auxiliary reward
-scores the state reached by the current transition.
+Both signals are computed from SimHash state aggregation and online trajectory
+ranking. ABRS can be disabled for a SAC-style ablation, and the uncertainty term
+can be disabled independently.
 
 ## Requirements
 
 - Python 3.10+
-- The parent RLBase project environment, including `utils.buffers.ReplayBuffer`
-- Main Python packages: `gymnasium`, `shimmy[dm-control]`, `numpy`, `torch`,
-  `tensorboard`, `tyro`, and `matplotlib`
+- The parent RLBase project, since `SAC_ABRS.py` imports
+  `utils.buffers.ReplayBuffer`.
+- Main packages: `gymnasium`, `shimmy[dm-control]`, `numpy`, `torch`,
+  `tensorboard`, `tyro`, and `matplotlib`.
 
-If this folder is used inside the RLBase project, install dependencies from the
-project-level environment file and run commands from the project root.
+All required packages can be installed from the project-level `pyproject.toml`:
 
-## Run ABRS
+```bash
+uv sync
+```
+
+Run the commands below from the RLBase project root, with this folder named
+`ABRSCode`.
+
+## Run ABRS Algorithm
 
 The main entry is `SAC_ABRS.py`, and the backbone algorithm is SAC.
 
-Default ABRS + SAC run:
+ABRS + SAC:
 
 ```bash
 uv run python ABRSCode/SAC_ABRS.py
 ```
 
-SAC-style ablation without ABRS auxiliary rewards:
+SAC ablation without ABRS:
 
 ```bash
 uv run python ABRSCode/SAC_ABRS.py --abrs-lambda 0
 ```
 
-Logs are saved to `runs/`. View them with:
+ABRS success reward only:
+
+```bash
+uv run python ABRSCode/SAC_ABRS.py --abrs-eta 0
+```
+
+Logs are saved to `runs/`. View with:
 
 ```bash
 tensorboard --logdir runs
@@ -55,82 +64,31 @@ tensorboard --logdir runs
 
 ## Key Arguments
 
-- `--env-id`: Gymnasium environment ID. Default:
+- `--exp-name`: experiment name for logging.
+- `--env-id`: environment ID. Default:
   `dm_control/cartpole-swingup_sparse-v0`.
-- `--total-timesteps`: total environment interaction steps.
-- `--seed`: random seed for NumPy, PyTorch, and the environment.
-- `--num-envs`: number of vectorized environments. The script currently uses
-  Gymnasium `SyncVectorEnv`.
-- `--buffer-size`, `--batch-size`: replay-buffer capacity and sampled batch
-  size.
-- `--gamma`, `--tau`, `--policy-lr`, `--q-lr`: SAC discount, target smoothing,
-  policy learning rate, and Q-network learning rate.
+- `--seed`: random seed.
+- `--total-timesteps`: total training steps.
+- `--num-envs`: number of vectorized environments.
+- `--buffer-size`, `--batch-size`: replay buffer and training batch sizes.
+- `--policy-lr`, `--q-lr`: actor and critic optimizer learning rates.
+- `--gamma`, `--tau`: SAC discount and target-network update coefficient.
 - `--autotune`, `--alpha`: entropy-temperature configuration.
-- `--abrs-lambda`: overall ABRS auxiliary reward scale.
-- `--abrs-eta`: uncertainty reward scale inside the ABRS bonus.
-- `--abrs-top-k-percent`: percentage of completed trajectories classified as
-  high-quality online.
-- `--abrs-credit-gamma-w`: backward credit discount for states in high-quality
+- `--abrs-lambda`: overall ABRS reward scale.
+- `--abrs-eta`: uncertainty reward scale inside ABRS.
+- `--abrs-top-k-percent`: top percentage of completed trajectories treated as
+  high quality.
+- `--abrs-credit-gamma-w`: backward credit discount for high-quality
   trajectories.
-- `--abrs-hash-bits`: number of SimHash bits used for state aggregation.
-- `--abrs-norm-clip`: clipping range after running observation normalization.
-- `--abrs-return-tie-tol`: tolerance for tied sparse trajectory returns.
-- `--abrs-reward-state`: choose whether ABRS scores `next` or `current` states.
-- `--abrs-save-beta-snapshots`: save periodic Beta-parameter snapshots.
-
-## Beta Posterior Snapshots
-
-Beta snapshots are enabled by default. When
-`--abrs-beta-snapshot-frequency 0`, the script automatically uses:
-
-```text
-total_timesteps / abrs_beta_snapshot_count
-```
-
-Snapshot files are written under the corresponding run directory as:
-
-```text
-runs/<run_name>/abrs_beta_snapshots.npz
-```
-
-Each snapshot file stores:
-
-```text
-steps
-bucket_ids
-alphas
-betas
-```
-
-Load a snapshot file with:
-
-```python
-import numpy as np
-
-data = np.load("runs/<run_name>/abrs_beta_snapshots.npz", allow_pickle=True)
-steps = data["steps"]
-bucket_ids = data["bucket_ids"]
-alphas = data["alphas"]
-betas = data["betas"]
-```
+- `--abrs-hash-bits`: number of SimHash bits for state aggregation.
+- `--abrs-reward-state`: use `next` or `current` states for ABRS rewards.
+- `--abrs-save-beta-snapshots`: save Beta posterior snapshots to `runs/`.
 
 ## Files
 
-- `SAC_ABRS.py`: SAC training entry with ABRS reward shaping.
-- `abrs.py`: SimHash state aggregation, online top-K trajectory ranking, and
-  Beta-posterior reward computation.
-- `plot_beta_snapshots.py`: utility for plotting Beta-distribution changes.
+- `SAC_ABRS.py`: training entry (SAC + ABRS).
+- `abrs.py`: ABRS reward module with SimHash aggregation, online trajectory
+  ranking, and Beta-posterior reward computation.
+- `plot_beta_snapshots.py`: utility for plotting Beta-posterior changes.
 - `ABRS.png`: overview figure for the ABRS framework.
 - `__init__.py`: package marker for `ABRSCode`.
-
-## Implementation Notes
-
-- DM Control observations are flattened and converted to `float32` before SAC
-  and ABRS processing.
-- High-quality trajectories update Beta alpha counts with discounted backward
-  credit; low-quality trajectories update Beta beta counts.
-- Sparse-return ties at the top-K boundary are handled explicitly so early
-  zero-return trajectories do not all become high-quality examples.
-- The script imports `ReplayBuffer` from the parent project module
-  `utils.buffers`, so this folder is expected to sit under the RLBase project
-  root or another project root that provides the same module.
